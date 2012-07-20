@@ -1,0 +1,166 @@
+<?xml version="1.0" standalone="yes"?>
+<REMINDER_EXCHANGE_FILE_ENTRY>
+<PACKAGE_VERSION>2.0P17</PACKAGE_VERSION>
+<INDEX_AT>151</INDEX_AT>
+<SOURCE>
+<NAME>VW-BMI-PERCENTILE</NAME>
+<USER>HABIEL,SAM</USER>
+<SITE>VOE OFFICE INSTITUTION</SITE>
+<DATE_PACKED>07/20/2012@16:15:11</DATE_PACKED>
+</SOURCE>
+<DESCRIPTION><![CDATA[
+The VW-BMI-PERCENTILE computed finding calculates the patient's body mass
+index percentile. The value returned, which can be used in the CONDITION
+field of the findings, is the body mass index percentile. It only works 
+for patients who are 18 years of age or less. Patients over 18 get a 
+result of "Not Found", even if a BMI can be calculated.
+ 
+An example of using the VW-BMI-PERCENTILE computed finding:
+ 1)  Create a finding in a reminder that is the VW-BMI-PERCENTILE computed
+finding; 
+ 2)  Add logic in the CONDITION field to check for a particular BMI
+Percentile value: "I V>25"; 
+ 3)  This finding will be evaluated to true for patients with a BMI 
+percentile that is greater than 25.
+ 
+This is a multi-occurrence computed finding.
+]]></DESCRIPTION>
+<KEYWORDS>
+<KEYWORD>BMI</KEYWORD>
+<KEYWORD>PERCENTILE</KEYWORD>
+<KEYWORD>COMPUTED</KEYWORD>
+<KEYWORD>FINDING</KEYWORD>
+</KEYWORDS>
+<M_ROUTINE>
+<ROUTINE_NAME>C0QRMBMI</ROUTINE_NAME>
+<CHECKSUM>961533736</CHECKSUM>
+<CODE>
+<![CDATA[
+C0QRMBMI ; VEN/SMH - BMI Percentile and BSA computed finding; 7/20/12 4:00pm
+ ;;1.0;QUALITY MEASURES;**1**;
+ ;
+ ; VEN/SMH - on July 16 2012
+ ; Added PBMI as a new Computed Finding -- essentially the same as BMI
+ ; PBMI = Percentile BMI;
+ ;
+ ; PEPs: PBMI
+ ; 
+PBMI(DFN,NGET,BDT,EDT,NFOUND,TEST,DATE,DATA,TEXT) ; Multi-occurrence computed
+ ; finding for BMI percentile; PEP
+ ; Input Variables: Follows Reminders API.
+ ; Additional Input Variables from ST: PXRMDOB, PXRMSEX
+ ; Output Variables: Follows Reminders API.
+ ;
+ ; Get BMIs from Standard Reminders Call (added in Patch 12)
+ D BMI^PXRMBMI(DFN,NGET,BDT,EDT,.NFOUND,.TEST,.DATE,.DATA,.TEXT) ; BMI call
+ ;
+ ; Walk through BMI results
+ N IND ; Index
+ F IND=1:1:NFOUND D  Q:'NFOUND  ; If NFOUND is zero'ed, quit.
+ . ;
+ . ; S TEST(IND)=1,DATE(IND)=TDATE ; The same; won't set here.
+ . ; S TEXT(IND)="height measured "_$$EDATE^PXRMDATE(HDATE) ; the same
+ . N BMI S BMI=DATA(IND,"VALUE") ; Get BMI
+ . N PBMI ; BMI Percentile
+ . ; We use PXRMDATE API to grab the Reminders Date Due, not today's date.
+ . N AGE S AGE=$$FMDIFF^XLFDT($$NOW^PXRMDATE(),PXRMDOB,1)/365.24 ; Age in yrs
+ . ;
+ . ; If the ep exists, call it, otherwise, mark as not found.
+ . I $T(BMIPCTL^TMGGRC1)]"" S PBMI=$$BMIPCTL^TMGGRC1(AGE,PXRMSEX,BMI,1)
+ . E  S NFOUND=0 QUIT
+ . ;
+ . ; Also, if N/A (patient above 18 yo) - mark as not found.
+ . I PBMI["N/A" S NFOUND=0 QUIT  ; Not available for anybody above 18 yo.
+ . ;
+ . ; We get a textish result (e.g. 78th percentile); convert to number
+ . S PBMI=+PBMI
+ . ;
+ . ; Set return values (NB: BMI subscript is still there)
+ . S (DATA(IND,"VALUE"),DATA(IND,"BMI%ILE"))=PBMI
+ QUIT
+ ;
+TPBMI(DFN) ; Test PBMI; Pass DFN by Value; Private, for testing only
+ N NFOUND,TEST,DATE,DATA,TEXT
+ N PXRMSEX S PXRMSEX=$P(^DPT(DFN,0),U,2)
+ N PXRMDOB S PXRMDOB=$P(^DPT(DFN,0),U,3)
+ N PXRMAGE S PXRMAGE=$$GET1^DIQ(2,DFN,"AGE")
+ D PBMI^C0QRMBMI(DFN,99,3000000,$$DT^XLFDT(),.NFOUND,.TEST,.DATE,.DATA,.TEXT)
+ I 'NFOUND W "No results found! for DFN "_DFN,!! QUIT
+ ;
+ W "Patient: DFN: "_DFN_"; "_PXRMAGE_" yo; "_PXRMSEX,!
+ ;
+ N I F I=1:1:NFOUND D
+ . W "NFOUND: "_NFOUND,!
+ . W "TEST: "_TEST(I),!
+ . W "DATE: "_DATE(I),!
+ . W "TEXT: "_TEXT(I),!
+ . W "DATA VALUE: "_DATA(I,"VALUE"),!
+ . W "DATA BMI%ILE: "_DATA(I,"BMI%ILE"),!
+ . W "DATA BMI: "_DATA(I,"BMI"),!
+ . W !
+ QUIT
+ ;
+ ; Private below as well.
+TEST N DFN S DFN=0 F  S DFN=$O(^DPT(DFN)) Q:'DFN  D TPBMI(DFN)  ; One liner test
+ QUIT
+]]>
+</CODE>
+</M_ROUTINE>
+<FILEMAN_FILE>
+<FILE_NAME>REMINDER COMPUTED FINDINGS</FILE_NAME>
+<FILE_NUMBER>811.4</FILE_NUMBER>
+<POINT_01>VW-BMI-PERCENTILE</POINT_01>
+<INTERNAL_ENTRY_NUMBER>93</INTERNAL_ENTRY_NUMBER>
+<CHECKSUM>1440960318</CHECKSUM>
+<SELECTED>YES</SELECTED>
+<FILEMAN_FDA>
+<![CDATA[
+811.4;+93,;.01~VW-BMI-PERCENTILE
+811.4;+93,;.02~C0QRMBMI
+811.4;+93,;.03~PBMI
+811.4;+93,;.04~Body Mass Index Percentile
+811.4;+93,;1~WP-start~15
+The VW-BMI-PERCENTILE computed finding calculates the patient's body mass
+index percentile. The value returned, which can be used in the CONDITION
+field of the findings, is the body mass index percentile. It only works 
+for patients who are 18 years of age or less. Patients over 18 get a 
+result of "Not Found", even if a BMI can be calculated.
+ 
+An example of using the VW-BMI-PERCENTILE computed finding:
+ 1)  Create a finding in a reminder that is the VW-BMI-PERCENTILE computed
+finding; 
+ 2)  Add logic in the CONDITION field to check for a particular BMI
+Percentile value: "I V>25"; 
+ 3)  This finding will be evaluated to true for patients with a BMI 
+percentile that is greater than 25.
+ 
+This is a multi-occurrence computed finding.
+811.4;+93,;5~MULTIPLE
+811.4;+93,;100~LOCAL
+811.42;+94,+93,;.01~07/20/2012@16:15:32
+811.42;+94,+93,;2~WP-start~1
+Exchange Stub
+]]>
+</FILEMAN_FDA>
+<IEN_ROOT>
+<![CDATA[
+94^1
+]]>
+</IEN_ROOT>
+</FILEMAN_FILE>
+<INDEX>
+<NUMBER_OF_COMPONENTS>2</NUMBER_OF_COMPONENTS>
+<COMPONENT>
+<M_ROUTINE_START>34</M_ROUTINE_START>
+<ROUTINE_CODE_END>105</ROUTINE_CODE_END>
+<ROUTINE_CODE_START>39</ROUTINE_CODE_START>
+</COMPONENT>
+<COMPONENT>
+<FDA_END>142</FDA_END>
+<FDA_START>118</FDA_START>
+<FILE_START>109</FILE_START>
+<IEN_ROOT_END>147</IEN_ROOT_END>
+<IEN_ROOT_START>147</IEN_ROOT_START>
+</COMPONENT>
+</INDEX>
+</REMINDER_EXCHANGE_FILE_ENTRY>
